@@ -7,7 +7,6 @@ import com.aula.pos.appinscricao.mapper.PessoaMapper;
 import com.aula.pos.appinscricao.model.Pessoa;
 import com.aula.pos.appinscricao.repository.PessoaRepository;
 import com.aula.pos.appinscricao.services.PessoaService;
-import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -62,7 +61,7 @@ public class PessoaServiceImpl implements PessoaService {
         var pessoa = findByIdOrThrow(id);
         pessoaRepository.delete(pessoa);
     }
-    
+
     private Pessoa findByIdOrThrow(UUID id) {
         return pessoaRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException(id));
