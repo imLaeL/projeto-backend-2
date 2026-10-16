@@ -23,21 +23,21 @@ public class Evento {
     private UUID id;
 
     @Column(length = 150, nullable = false)
-    public String nome;
+    private String nome;
 
     @Column(nullable = false)
-    public LocalDateTime dataHoraEvento;
+    private LocalDateTime dataHoraEvento;
 
     @Column(length = 200, nullable = false)
-    public String local;
+    private String local;
 
     @Column(length = 100, nullable = false)
-    public String cidade;
+    private String cidade;
 
     @Column(length = 2, nullable = false)
-    public String estado;
+    private String estado;
 
     @Column(nullable = false)
-    public Integer qtde;
+    private Integer qtde;
 
 }

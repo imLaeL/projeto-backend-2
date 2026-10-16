@@ -10,6 +10,7 @@ public record EventoResponse(
        String local,
        String cidade,
        String estado,
-       Integer qtde
+       Integer qtde,
+       Long diasParaEvento
 ) {
 }
