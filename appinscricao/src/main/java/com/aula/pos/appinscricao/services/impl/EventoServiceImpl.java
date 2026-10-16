@@ -2,6 +2,8 @@ package com.aula.pos.appinscricao.services.impl;
 
 import com.aula.pos.appinscricao.dto.EventoRequest;
 import com.aula.pos.appinscricao.dto.EventoResponse;
+import com.aula.pos.appinscricao.exception.BusinessException;
+import com.aula.pos.appinscricao.exception.ConflictException;
 import com.aula.pos.appinscricao.exception.ResourceNotFoundException;
 import com.aula.pos.appinscricao.mapper.EventoMapper;
 import com.aula.pos.appinscricao.model.Evento;
@@ -13,25 +15,21 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class EventoServiceImpl implements EventoService {
+    private static final String EVENTO_DUPLICADO = "Já existe um evento com o mesmo nome, data/hora e cidade";
+
     private final EventoRepository eventoRepository;
     private final EventoMapper eventoMapper;
 
     @Override
-    public Page<EventoResponse> findAll(String nome, Pageable pageable) {
-        Page<Evento> page;
-
-        if (nome == null && !nome.isBlank()) {
-            page = eventoRepository.findByNomeContainingIgnoreCase(nome, pageable);
-        } else {
-            page = eventoRepository.findAll(pageable);
-        }
-        return page.map((p) -> eventoMapper.toResponse(p));
+    public Page<EventoResponse> findAll(String nome, String cidade, String estado, Pageable pageable) {
+        return findPage(nome, cidade, estado, pageable).map(eventoMapper::toResponse);
     }
 
     @Override
@@ -44,6 +42,10 @@ public class EventoServiceImpl implements EventoService {
     @Transactional
     public EventoResponse save(EventoRequest eventoRequest) {
         var evento = eventoMapper.toEntity(eventoRequest);
+        if (eventoRepository.existsByNomeIgnoreCaseAndDataHoraEventoAndCidadeIgnoreCase(
+                evento.getNome(), evento.getDataHoraEvento(), evento.getCidade())) {
+            throw new ConflictException(EVENTO_DUPLICADO);
+        }
         return eventoMapper.toResponse(eventoRepository.save(evento));
     }
 
@@ -51,6 +53,11 @@ public class EventoServiceImpl implements EventoService {
     @Transactional
     public EventoResponse update(UUID id, EventoRequest eventoRequest) {
         var evento = findByIdOrThrow(id);
+        var dadosNovos = eventoMapper.toEntity(eventoRequest);
+        if (eventoRepository.existsByNomeIgnoreCaseAndDataHoraEventoAndCidadeIgnoreCaseAndIdNot(
+                dadosNovos.getNome(), dadosNovos.getDataHoraEvento(), dadosNovos.getCidade(), id)) {
+            throw new ConflictException(EVENTO_DUPLICADO);
+        }
         eventoMapper.updateEntity(eventoRequest, evento);
         return eventoMapper.toResponse(evento);
     }
@@ -59,7 +66,24 @@ public class EventoServiceImpl implements EventoService {
     @Transactional
     public void delete(UUID id) {
         var evento = findByIdOrThrow(id);
+        if (evento.getDataHoraEvento().isBefore(LocalDateTime.now())) {
+            throw new BusinessException("Não é possível excluir um evento já realizado");
+        }
         eventoRepository.delete(evento);
+    }
+
+    // Filter priority: nome -> cidade -> estado
+    private Page<Evento> findPage(String nome, String cidade, String estado, Pageable pageable) {
+        if (nome != null && !nome.isBlank()) {
+            return eventoRepository.findByNomeContainingIgnoreCase(nome.trim(), pageable);
+        }
+        if (cidade != null && !cidade.isBlank()) {
+            return eventoRepository.findByCidadeContainingIgnoreCase(cidade.trim(), pageable);
+        }
+        if (estado != null && !estado.isBlank()) {
+            return eventoRepository.findByEstadoIgnoreCase(estado.trim(), pageable);
+        }
+        return eventoRepository.findAll(pageable);
     }
 
     private Evento findByIdOrThrow(UUID id) {

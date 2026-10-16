@@ -6,8 +6,8 @@ import com.aula.pos.appinscricao.dto.PessoaResponse;
 import com.aula.pos.appinscricao.exception.ApiException;
 import com.aula.pos.appinscricao.services.PessoaService;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.Size;
 import lombok.RequiredArgsConstructor;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -29,7 +29,7 @@ public class PessoaController {
     @GetMapping
     public Page<PessoaResponse> findAll(
             @RequestParam(required = false) String nome,
-            @PageableDefault(size = 10, sort = "nome", direction = Sort.Direction.ASC) Pageable pageable
+            @ParameterObject @PageableDefault(size = 10, sort = "nome", direction = Sort.Direction.ASC) Pageable pageable
     ){
         return pessoaService.findAll(nome, pageable);
     }
@@ -39,7 +39,7 @@ public class PessoaController {
         try {
             return ResponseEntity.ok(pessoaService.findById(id));
         } catch (ApiException e) {
-            return ResponseEntity.status(e.getStatus()).body(new ErrorResponse(LocalDateTime.now(), e.getStatus(), e.getMessage()));
+            return errorResponse(e);
         }
     }
 
@@ -50,20 +50,25 @@ public class PessoaController {
 
     @PutMapping("/{id}")
     public ResponseEntity<?> update(@PathVariable UUID id, @Valid @RequestBody PessoaRequest pessoaRequest){
-        try{
+        try {
             return ResponseEntity.ok(pessoaService.update(id, pessoaRequest));
-        } catch(ApiException e){
-            return ResponseEntity.status(e.getStatus()).body(new ErrorResponse(LocalDateTime.now(), e.getStatus(), e.getMessage()));
+        } catch (ApiException e) {
+            return errorResponse(e);
         }
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteById(@PathVariable UUID id){
-        try{
+        try {
             pessoaService.delete(id);
             return ResponseEntity.noContent().build();
-        } catch(ApiException e){
-            return ResponseEntity.status(e.getStatus()).body(new ErrorResponse(LocalDateTime.now(), e.getStatus(), e.getMessage()));
+        } catch (ApiException e) {
+            return errorResponse(e);
         }
+    }
+
+    private ResponseEntity<ErrorResponse> errorResponse(ApiException e) {
+        return ResponseEntity.status(e.getStatus())
+                .body(new ErrorResponse(LocalDateTime.now(), e.getStatus().value(), e.getMessage()));
     }
 }

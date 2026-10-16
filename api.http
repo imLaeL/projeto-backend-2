@@ -1,0 +1,278 @@
+@baseUrl = http://localhost:8080/api/v1
+
+### 0. Preparar datas (daqui a 10 e 20 dias, horário local) — só lista eventos (200)
+< {%
+  const pad = (n) => String(n).padStart(2, "0");
+  const plusDays = (days, hour) => {
+    const d = new Date();
+    d.setDate(d.getDate() + days);
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(hour)}:00:00`;
+  };
+  client.global.set("data10", plusDays(10, 19));
+  client.global.set("data20", plusDays(20, 9));
+  client.global.set("suffix", String(Date.now()));
+%}
+GET {{baseUrl}}/eventos
+
+### CT01 + CT02 — cadastrar evento válido, estado "pb" gravado como "PB" (201)
+POST {{baseUrl}}/eventos
+Content-Type: application/json
+
+{
+  "nome": "Workshop Spring Boot {{suffix}}",
+  "dataHoraEvento": "{{data10}}",
+  "local": "Auditório Central",
+  "cidade": "João Pessoa",
+  "estado": "pb",
+  "qtde": 50
+}
+
+> {%
+  client.assert(response.status === 201, "evento não criado");
+  client.assert(response.body.id, "id não gerado");
+  client.assert(response.body.estado === "PB", "estado não foi gravado em maiúsculas");
+  client.global.set("eventoId", response.body.id);
+  client.global.set("eventoNome", response.body.nome);
+%}
+
+### Cadastrar segundo evento, outra cidade/estado (201)
+POST {{baseUrl}}/eventos
+Content-Type: application/json
+
+{
+  "nome": "Meetup Angular {{suffix}}",
+  "dataHoraEvento": "{{data20}}",
+  "local": "Centro de Convenções",
+  "cidade": "Recife",
+  "estado": "PE",
+  "qtde": 30
+}
+
+> {%
+  client.assert(response.status === 201, "evento não criado");
+  client.global.set("outroEventoId", response.body.id);
+%}
+
+### CT03a — sem nome (400 padrão do Spring)
+POST {{baseUrl}}/eventos
+Content-Type: application/json
+
+{
+  "dataHoraEvento": "{{data10}}",
+  "local": "Auditório",
+  "cidade": "João Pessoa",
+  "estado": "PB",
+  "qtde": 10
+}
+
+> {% client.assert(response.status === 400, "esperado 400"); %}
+
+### CT03b — qtde = 0 (400 padrão do Spring)
+POST {{baseUrl}}/eventos
+Content-Type: application/json
+
+{
+  "nome": "Evento sem vagas",
+  "dataHoraEvento": "{{data10}}",
+  "local": "Auditório",
+  "cidade": "João Pessoa",
+  "estado": "PB",
+  "qtde": 0
+}
+
+> {% client.assert(response.status === 400, "esperado 400"); %}
+
+### CT04 — data no passado (400)
+POST {{baseUrl}}/eventos
+Content-Type: application/json
+
+{
+  "nome": "Evento no passado",
+  "dataHoraEvento": "2020-01-01T10:00:00",
+  "local": "Auditório",
+  "cidade": "João Pessoa",
+  "estado": "PB",
+  "qtde": 10
+}
+
+> {% client.assert(response.status === 400, "esperado 400"); %}
+
+### CT05 — id inexistente (404 com corpo de erro)
+GET {{baseUrl}}/eventos/00000000-0000-0000-0000-000000000000
+
+> {%
+  client.assert(response.status === 404, "esperado 404");
+  client.assert(response.body.status === 404, "status do corpo deveria ser 404");
+%}
+
+### CT06 — listagem sem parâmetros: 10 por página, ordem por data (200)
+GET {{baseUrl}}/eventos
+
+> {%
+  client.assert(response.status === 200, "esperado 200");
+  client.assert(response.body.size === 10, "página deveria ter tamanho 10");
+  const datas = response.body.content.map(e => e.dataHoraEvento);
+  client.assert(datas.every((d, i) => i === 0 || datas[i - 1] <= d), "listagem fora de ordem por data");
+%}
+
+### Paginação e ordenação explícitas (200)
+GET {{baseUrl}}/eventos?page=0&size=5&sort=nome,desc
+
+### CT07 — filtro por trecho do nome, sem diferenciar maiúsculas (200)
+GET {{baseUrl}}/eventos?nome=spring
+
+> {%
+  client.assert(response.status === 200, "esperado 200");
+  client.assert(response.body.content.some(e => e.id === client.global.get("eventoId")), "evento não retornado");
+%}
+
+### Filtro por cidade (200)
+GET {{baseUrl}}/eventos?cidade=recife
+
+### Filtro por estado (200)
+GET {{baseUrl}}/eventos?estado=pe
+
+### Prioridade dos filtros — nome vence cidade (200, só o workshop)
+GET {{baseUrl}}/eventos?nome=workshop&cidade=recife
+
+### CT12 — evento daqui a 10 dias: diasParaEvento = 10 (200)
+GET {{baseUrl}}/eventos/{{eventoId}}
+
+> {%
+  client.assert(response.status === 200, "esperado 200");
+  client.assert(response.body.diasParaEvento === 10, "diasParaEvento deveria ser 10");
+%}
+
+### CT09 — mesmo nome, data/hora e cidade, com caixa diferente (409)
+POST {{baseUrl}}/eventos
+Content-Type: application/json
+
+{
+  "nome": "WORKSHOP SPRING BOOT {{suffix}}",
+  "dataHoraEvento": "{{data10}}",
+  "local": "Outro local",
+  "cidade": "joão pessoa",
+  "estado": "PB",
+  "qtde": 10
+}
+
+> {% client.assert(response.status === 409, "esperado 409"); %}
+
+### CT10 — PUT sem alterar nome, data/hora e cidade: o próprio evento não conta (200)
+PUT {{baseUrl}}/eventos/{{eventoId}}
+Content-Type: application/json
+
+{
+  "nome": "{{eventoNome}}",
+  "dataHoraEvento": "{{data10}}",
+  "local": "Auditório Central — Bloco B",
+  "cidade": "João Pessoa",
+  "estado": "PB",
+  "qtde": 80
+}
+
+> {%
+  client.assert(response.status === 200, "esperado 200");
+  client.assert(response.body.qtde === 80, "qtde não atualizada");
+%}
+
+### PUT tornando o segundo evento duplicado do primeiro (409)
+PUT {{baseUrl}}/eventos/{{outroEventoId}}
+Content-Type: application/json
+
+{
+  "nome": "{{eventoNome}}",
+  "dataHoraEvento": "{{data10}}",
+  "local": "Centro de Convenções",
+  "cidade": "João Pessoa",
+  "estado": "PB",
+  "qtde": 30
+}
+
+> {% client.assert(response.status === 409, "esperado 409"); %}
+
+### PUT em id inexistente (404)
+PUT {{baseUrl}}/eventos/00000000-0000-0000-0000-000000000000
+Content-Type: application/json
+
+{
+  "nome": "Qualquer",
+  "dataHoraEvento": "{{data10}}",
+  "local": "Auditório",
+  "cidade": "João Pessoa",
+  "estado": "PB",
+  "qtde": 10
+}
+
+> {% client.assert(response.status === 404, "esperado 404"); %}
+
+### CT11 — DELETE de evento já realizado (400, evento não é excluído)
+### PRÉ-REQUISITO MANUAL: a API não aceita data passada (@Future), então o evento vai direto no banco.
+### Rode no terminal antes desta requisição (INSERT IGNORE: pode repetir sem erro):
+###   docker exec inscricoes-mysql mysql -uroot -proot inscricoes-db -e "INSERT IGNORE INTO tb_eventos (id, nome, data_hora_evento, local, cidade, estado, qtde) VALUES (UUID_TO_BIN('11111111-1111-1111-1111-111111111111'), 'Evento passado', '2020-01-01 10:00:00', 'Auditório', 'João Pessoa', 'PB', 10)"
+DELETE {{baseUrl}}/eventos/11111111-1111-1111-1111-111111111111
+
+> {%
+  client.assert(response.status !== 404, "evento passado não existe no banco: rode o INSERT do comentário acima");
+  client.assert(response.status === 400, "esperado 400");
+  client.assert(response.body.message === "Não é possível excluir um evento já realizado", "mensagem diferente do PDF");
+%}
+
+### CT11b — evento passado continua no banco (200)
+GET {{baseUrl}}/eventos/11111111-1111-1111-1111-111111111111
+
+> {% client.assert(response.status === 200, "evento passado deveria continuar existindo"); %}
+
+### CT08a — DELETE de evento existente (204)
+DELETE {{baseUrl}}/eventos/{{eventoId}}
+
+> {% client.assert(response.status === 204, "esperado 204"); %}
+
+### CT08b — GET depois do DELETE (404)
+GET {{baseUrl}}/eventos/{{eventoId}}
+
+> {% client.assert(response.status === 404, "esperado 404"); %}
+
+### DELETE do segundo evento (204)
+DELETE {{baseUrl}}/eventos/{{outroEventoId}}
+
+### ---------------- Pessoas ----------------
+
+### Cadastrar pessoa (201)
+POST {{baseUrl}}/pessoas
+Content-Type: application/json
+
+{
+  "nome": "Ana Souza",
+  "cpf": "{{suffix}}",
+  "email": "ana.{{suffix}}@example.com",
+  "telefone": "83999999999"
+}
+
+> {%
+  client.assert(response.status === 201, "pessoa não criada");
+  client.global.set("pessoaId", response.body.id);
+%}
+
+### Listar pessoas (200)
+GET {{baseUrl}}/pessoas?nome=ana
+
+### Consultar pessoa (200)
+GET {{baseUrl}}/pessoas/{{pessoaId}}
+
+### Atualizar pessoa (200)
+PUT {{baseUrl}}/pessoas/{{pessoaId}}
+Content-Type: application/json
+
+{
+  "nome": "Ana Souza Lima",
+  "cpf": "{{suffix}}9",
+  "email": "ana.lima.{{suffix}}@example.com",
+  "telefone": "83988888888"
+}
+
+### Remover pessoa (204)
+DELETE {{baseUrl}}/pessoas/{{pessoaId}}
+
+### Pessoa inexistente (404)
+GET {{baseUrl}}/pessoas/{{pessoaId}}

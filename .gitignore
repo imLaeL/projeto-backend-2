@@ -1,0 +1,20 @@
+# Build output
+target/
+*.class
+*.jar
+*.war
+*.log
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# OS
+.DS_Store
+
+# Local tooling
+.remember/
+
+# Course material (kept locally, not versioned)
+*.pdf

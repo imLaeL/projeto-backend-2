@@ -9,15 +9,15 @@ public record PessoaRequest(
         String nome,
 
         @NotBlank(message = "O CPF é obrigatório")
-        @Size(max = 100, message = "CPF deve possuir no máximo 100 caracteres")
+        @Size(max = 15, message = "O CPF deve possuir no máximo 15 caracteres")
         String cpf,
 
         @NotBlank(message = "O email é obrigatório")
-        @Size(max = 100, message = "email deve possuir no máximo 15 caracteres")
+        @Size(max = 100, message = "O email deve possuir no máximo 100 caracteres")
         String email,
 
         @NotBlank(message = "O telefone é obrigatório")
-        @Size(max = 15, message = "telefone deve possuir no máximo 15 caracteres")
+        @Size(max = 15, message = "O telefone deve possuir no máximo 15 caracteres")
         String telefone
 ) {
 }
