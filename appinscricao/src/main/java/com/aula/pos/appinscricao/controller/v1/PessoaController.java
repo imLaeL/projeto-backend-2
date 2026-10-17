@@ -41,8 +41,9 @@ public class PessoaController {
 
 
     @PostMapping
-    public ResponseEntity<PessoaResponse> save(@Valid @RequestBody PessoaRequest request){
-        return ResponseEntity.status(HttpStatus.CREATED).body(pessoaService.save(request));
+    @ResponseStatus(HttpStatus.CREATED)
+    public PessoaResponse save(@Valid @RequestBody PessoaRequest request){
+        return pessoaService.save(request);
     }
 
     @PutMapping("/{id}")
