@@ -12,7 +12,6 @@ public class PessoaMapper {
               null,
               pessoaRequest.nome().trim(),
               pessoaRequest.cpf().trim(),
-              pessoaRequest.email().trim(),
               pessoaRequest.telefone().trim()
       );
     }
@@ -20,7 +19,6 @@ public class PessoaMapper {
     public void updateEntity(PessoaRequest pessoaRequest, Pessoa pessoa) {
         pessoa.setNome(pessoaRequest.nome().trim());
         pessoa.setCpf(pessoaRequest.cpf().trim());
-        pessoa.setEmail(pessoaRequest.email().trim());
         pessoa.setTelefone(pessoaRequest.telefone().trim());
     }
 
@@ -29,7 +27,6 @@ public class PessoaMapper {
                 pessoaResponse.getId(),
                 pessoaResponse.getNome(),
                 pessoaResponse.getCpf(),
-                pessoaResponse.getEmail(),
                 pessoaResponse.getTelefone()
         );
     }

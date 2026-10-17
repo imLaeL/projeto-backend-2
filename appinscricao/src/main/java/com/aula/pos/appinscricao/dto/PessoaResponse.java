@@ -6,7 +6,6 @@ public record PessoaResponse(
         UUID id,
         String nome,
         String cpf,
-        String email,
         String telefone
 ) {
 }
