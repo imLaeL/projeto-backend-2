@@ -35,40 +35,29 @@ public class PessoaController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<?> findById(@PathVariable UUID id){
-        try {
-            return ResponseEntity.ok(pessoaService.findById(id));
-        } catch (ApiException e) {
-            return errorResponse(e);
-        }
+    public PessoaResponse findById(@PathVariable UUID id){
+        return pessoaService.findById(id);
     }
 
+
     @PostMapping
-    public ResponseEntity<PessoaResponse> save(@Valid @RequestBody PessoaRequest pessoaRequest){
-        return ResponseEntity.status(HttpStatus.CREATED).body(pessoaService.save(pessoaRequest));
+    public ResponseEntity<PessoaResponse> save(@Valid @RequestBody PessoaRequest request){
+        return ResponseEntity.status(HttpStatus.CREATED).body(pessoaService.save(request));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<?> update(@PathVariable UUID id, @Valid @RequestBody PessoaRequest pessoaRequest){
-        try {
-            return ResponseEntity.ok(pessoaService.update(id, pessoaRequest));
-        } catch (ApiException e) {
-            return errorResponse(e);
-        }
+    public ResponseEntity<PessoaResponse> update(
+            @PathVariable UUID id,
+            @Valid @RequestBody PessoaRequest request
+    ){
+        return ResponseEntity.ok(pessoaService.update(id, request));
     }
+
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> deleteById(@PathVariable UUID id){
-        try {
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteById(@PathVariable UUID id){
             pessoaService.delete(id);
-            return ResponseEntity.noContent().build();
-        } catch (ApiException e) {
-            return errorResponse(e);
-        }
     }
 
-    private ResponseEntity<ErrorResponse> errorResponse(ApiException e) {
-        return ResponseEntity.status(e.getStatus())
-                .body(new ErrorResponse(LocalDateTime.now(), e.getStatus().value(), e.getMessage()));
-    }
 }

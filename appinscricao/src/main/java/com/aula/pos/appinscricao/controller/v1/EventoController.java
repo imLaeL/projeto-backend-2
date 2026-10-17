@@ -37,44 +37,27 @@ public class EventoController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<?> findById(@PathVariable UUID id){
-        try {
-            return ResponseEntity.ok(eventoService.findById(id));
-        } catch (ApiException e) {
-            return errorResponse(e);
-        }
+    public ResponseEntity<EventoResponse> findById(@PathVariable UUID id) {
+        return ResponseEntity.ok(eventoService.findById(id));
     }
 
     @PostMapping
-    public ResponseEntity<?> save(@Valid @RequestBody EventoRequest eventoRequest){
-        try {
-            return ResponseEntity.status(HttpStatus.CREATED).body(eventoService.save(eventoRequest));
-        } catch (ApiException e) {
-            return errorResponse(e);
-        }
+    @ResponseStatus(HttpStatus.CREATED)
+    public EventoResponse save(@Valid @RequestBody EventoRequest request) {
+        return eventoService.save(request);
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<?> update(@PathVariable UUID id, @Valid @RequestBody EventoRequest eventoRequest){
-        try {
-            return ResponseEntity.ok(eventoService.update(id, eventoRequest));
-        } catch (ApiException e) {
-            return errorResponse(e);
-        }
+    public ResponseEntity<EventoResponse> update(
+            @PathVariable UUID id,
+            @Valid @RequestBody EventoRequest request
+    ) {
+        return ResponseEntity.ok(eventoService.update(id, request));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<?> deleteById(@PathVariable UUID id){
-        try {
-            eventoService.delete(id);
-            return ResponseEntity.noContent().build();
-        } catch (ApiException e) {
-            return errorResponse(e);
-        }
-    }
-
-    private ResponseEntity<ErrorResponse> errorResponse(ApiException e) {
-        return ResponseEntity.status(e.getStatus())
-                .body(new ErrorResponse(LocalDateTime.now(), e.getStatus().value(), e.getMessage()));
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteById(@PathVariable UUID id) {
+        eventoService.delete(id);
     }
 }
